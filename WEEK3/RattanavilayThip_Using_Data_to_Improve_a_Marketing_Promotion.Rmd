@@ -1,0 +1,175 @@
+--- 
+title: "Assignment 3.2 - Using Data to Improve a Marketing Promotion"
+author: "Thip Rattanavilay"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# 1. Import, Plot, Summarize, and Save Data  and summary for every variable, structure and type of data elements
+
+
+```{r RDataLoadInstallPakcages, echo=FALSE, include=FALSE}
+# Load Libraries
+# blscrapeR: An API Wrapper for the Bureau of Labor Statistics (BLS)
+
+library(car)  # Package with Special functions for linear regression
+library(lattice)  # Graphics Package
+library(ggplot2) # Graphical Package
+
+## Load Data, Read File 
+getwd()
+##setwd("")
+
+Dodgers_df <- read.csv("dodgers.csv")
+
+# Dataframe Checks
+#head(Dodgers_df,20)
+#str(Dodgers_df)
+#summary(Dodgers_df)
+#class(Dodgers_df)
+#dim(Dodgers_df)
+
+```
+
+
+The below is the Structure of datasets which explains the detail of metadata.
+
+```{r RMetadata, echo=FALSE}
+str(Dodgers_df)
+dim(Dodgers_df)
+
+```
+
+
+The Dataset contains 81 rows and 12 Variables
+
+## 1. Box plots and Scatter plots
+
+```{r plots, echo=FALSE}
+#Level the day of week and Month
+Dodgers_df$day_of_week <- factor(Dodgers_df$day_of_week, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+
+Dodgers_df$month <- factor(Dodgers_df$month, levels = c("APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT"))
+
+
+## attendance by Day of week
+ggplot(Dodgers_df, aes(x=day_of_week, y=attend / 1000)) + 
+  geom_boxplot() + ggtitle("Attendance By Weekdays") +
+        theme(plot.title = element_text(lineheight=3, face="bold", color="Red", size=10)) +
+        xlab("Day of Week") +
+        ylab("Attendance (1000s)")
+
+## attendance by day_night
+ggplot(Dodgers_df, aes(x=day_night, y=attend / 1000)) + 
+  geom_boxplot() + ggtitle("Attendance By Weekdays") +
+        theme(plot.title = element_text(lineheight=3, face="bold", color="Red", size=10)) +
+        xlab("day_night") +
+        ylab("Attendance (1000s)")
+
+## attendance by Month
+plot(Dodgers_df$month, Dodgers_df$attend / 1000, main = "Attendence (Thousands) By Month", xlab = "Month", 
+ylab = "Attendance (thousands)", col = "Red", las = 1)
+
+## Attendance By Temperature By Time of Game and Skies
+ggplot(Dodgers_df, aes(x=temp, y=attend/1000, color=fireworks)) + 
+        geom_point() + 
+        facet_wrap(day_night~skies) + 
+        ggtitle("Attendance By Temperature By Time of Game and Skies") +
+        theme(plot.title = element_text(lineheight=3, face="bold", color="black", size=10)) +
+        xlab("Temperature (in F)") +
+        ylab("Attendance (1000s)")
+
+ggplot(Dodgers_df, aes(x=attend/1000, y=opponent, color=day_night)) + 
+        geom_point() + 
+        ggtitle("Attendance By Opponent") +
+        theme(plot.title = element_text(lineheight=3, face="bold", color="black", size=10)) +
+        xlab("Attendance (1000s)") +
+        ylab("Opponent")
+
+
+```
+
+
+### 2. Regression Model
+
+
+```{r correlation, echo=FALSE}
+
+# Create a model with the bobblehead variable entered last
+my.model <- {attend ~ month + day_of_week + day_night}
+
+# Prepare a Training and Test dataset
+
+# Reseed for repeatability
+set.seed(1234)
+
+training_test <- c(rep(1, trunc((2/3)*nrow(Dodgers_df))), rep(2, trunc((1/3)*nrow(Dodgers_df))))
+
+# sample(training_test)
+
+# Create a variable in Dodgers_df data frame to identify Test and Training row
+Dodgers_df$Training_Test <- sample(training_test)
+
+Dodgers_df$Training_Test <- factor(Dodgers_df$Training_Test, levels = c(1, 2), labels = c("TRAIN", "TEST"))
+
+
+Dodgers_df.Train <- subset(Dodgers_df, Training_Test == "TRAIN")
+Dodgers_df.Test <- subset(Dodgers_df, Training_Test == "TEST")
+
+
+# Fit model to training set
+train.model.fit <- lm(my.model, data = Dodgers_df.Train)
+
+# Predict from Training Set
+Dodgers_df.Train$Predict_Attend <- predict(train.model.fit)
+
+# Evaluate The Fitted Model on the Test Set
+Dodgers_df.Test$Predict_Attend <- predict(train.model.fit, newdata = Dodgers_df.Test)
+
+
+# compute the proportion of response variance accounted for when predicting Test Data
+cat("\n","Proportion of Test Set Variance Accounted for: ", round(cor(Dodgers_df.Test$attend, Dodgers_df.Test$Predict_Attend)^2, digits=3), "\n", sep="")
+
+Dodgers_df.Training_Test <- rbind(Dodgers_df.Train, Dodgers_df.Test)
+
+my.model.fit <- lm(my.model, data = Dodgers_df)  # use all available data
+print(summary(my.model.fit))
+
+
+```
+
+# Conclusion - Summary of Analysis
+
+Based on the Dodgers Marketing Team on which month and day would be best to run a promotion to increase attendance, several factors were considered and reviewed. Therefore R was utilized for the data preparation and model creation and prediction. The Dodgers data in csv format loaded into dataset.
+
+In reviewing days of the week, Tuesdays were found to have the highest average attendance, followed by the weekend games on Saturdays and Sundays. Mondays averaged the lowest attendance. With this information and analysis, the data was loaded into R for further review. 
+
+Here the multiple linear regression model was created to look at the relationship between month, day of the week, DayNight and attendance for the Dodgers data. 
+
+From the data, relationships were found between the month, day of the week head promotions, and attendance for the Dodgers with a p-value of 0.0001937. 
+
+Once we split the data into testing and training segments, the model was fit with the training set and the test set was used in the prediction. 
+
+
+As part of the analysis in Chart and Regression Model output, we see that there is a positive impact on Tuesday night would be the best to run a marketing promotion to increase attendance - The score of 13124.
+
+
+
+# References:
+
+https://www.statmethods.net/graphs/scatterplot.html
+
+https://www.statmethods.net/graphs/boxplot.html
+
+https://www.statmethods.net/stats/regression.html
+
+
+
